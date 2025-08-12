@@ -17,11 +17,13 @@ async def trigger_backup(source: str) -> bool:
     return True
 
 
-def trigger_granular_restore(source: str, external_ids: list[str], restore_path: str) -> str:
+async def trigger_granular_restore(source: str, external_ids: list[str]) -> str:
     """Trigger granular restore"""
+    restore_path = "/Users/debashisdas/HYCU/restore"
     if source.lower().replace(" ", "") in ['onedrive', 'drive']:
+        print("restore one drive")
         content = {}
-        with sqlite3.connect('/Users/debashisdas/HYCU/hycu-mcp/od4b.sql') as conn:
+        with sqlite3.connect('/Users/debashisdas/HYCU/dbs/od4b.sql') as conn:
             for externalId in external_ids:
                 cursor = conn.cursor()
                 cursor.execute(
@@ -36,7 +38,7 @@ def trigger_granular_restore(source: str, external_ids: list[str], restore_path:
                 versions = cursor.fetchall()
                 content[externalId] = {}
                 for version in versions:
-                    url = f"http://192.168.1.8:5001/api/v2/objects/user/5864baa1-8cbe-40ef-a5a1-186e33a16a22/b!ywc0KqYlJ0qL1AvG6J72lYPEpf1LjdJHj5xiL01ATS_rAzd7iFRyT5KL-wW4DtDr/{externalId}/{version[2]}"
+                    url = f"http://10.26.2.94:5001/api/v2/objects/user/5864baa1-8cbe-40ef-a5a1-186e33a16a22/b!ywc0KqYlJ0qL1AvG6J72lYPEpf1LjdJHj5xiL01ATS_rAzd7iFRyT5KL-wW4DtDr/{externalId}/{version[2]}"
                     s = requests.Session()
                     try:
                         with s.get(url, stream=True) as resp:
@@ -54,7 +56,7 @@ def trigger_granular_restore(source: str, external_ids: list[str], restore_path:
         return json.dumps(content)
     elif source.lower().replace(" ", "") in ['outlook', 'mail']:
         content = {}
-        with sqlite3.connect('/Users/debashisdas/HYCU/hycu-mcp/od4b.sql') as conn:
+        with sqlite3.connect('/Users/debashisdas/HYCU/dbs/od4b.sql') as conn:
             for externalId in external_ids:
                 cursor = conn.cursor()
                 cursor.execute(
@@ -69,7 +71,7 @@ def trigger_granular_restore(source: str, external_ids: list[str], restore_path:
 
 async def search_interaction(sql_query: str):
     content = ""
-    with sqlite3.connect('/Users/debashisdas/HYCU/hycu-mcp/od4b.sql') as conn:
+    with sqlite3.connect('/Users/debashisdas/HYCU/dbs/od4b.sql') as conn:
         cursor = conn.cursor()
         cursor.execute(sql_query)
         if sql_query.upper().startswith("CREATE"):
@@ -153,8 +155,11 @@ async def serve():
         elif name == "restore":
             module_name = arguments["moduleName"]
             external_ids = arguments["externalIds"]
-            result = await trigger_granular_restore(source=module_name, external_ids=external_ids.split(","))
-            return [types.TextContent(type="text", text=str(result))]
+            try:
+                result = await trigger_granular_restore(source=module_name, external_ids=external_ids.split(","))
+                return [types.TextContent(type="text", text=str(result))]
+            except:
+                raise ValueError(f"Error was thrown during restore")
         raise ValueError(f"Tool not found : {name}")
 
     options = app.create_initialization_options()
@@ -168,5 +173,5 @@ def main():
 
 
 if __name__ == "__main__":
-    # main()
-    response = trigger_granular_restore("one drive", ["01I4IEIBY6NPOORAHEKREIY5CFN2NBD2Y4"])
+    main()
+    # response = trigger_granular_restore("one drive", ["01I4IEIBZI4G7LD6O4HNE2JUQF536WNKIZ"])
